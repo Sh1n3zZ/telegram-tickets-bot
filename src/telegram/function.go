@@ -8,11 +8,11 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-// 用于存储用户当前的对话状态
+// Store user's current conversation state
 var userStates = make(map[int64]string)
 var ticketData = make(map[int64]*tickets.TicketCreationData)
 
-// 添加新的用户状态
+// Add new user states
 const (
 	StateNone              = ""
 	StateWaitingForTitle   = "waiting_for_title"
@@ -32,16 +32,16 @@ func (b *Bot) HandleGetMeCommand(message *tgbotapi.Message) error {
 		username = "@" + user.UserName
 	}
 
-	// 获取数据库连接
+	// Get database connection
 	db, err := database.InitializeDB()
 	if err != nil {
-		return fmt.Errorf("获取数据库连接失败: %v", err)
+		return fmt.Errorf("[ERROR] Failed to get database connection: %v", err)
 	}
 
-	// 检查用户是否已注册，如果未注册则自动注册
+	// Check if user is registered, if not, register automatically
 	regularUser, err := database.CheckAndRegisterUser(db, int64(user.ID))
 	if err != nil {
-		return fmt.Errorf("检查和注册用户失败: %v", err)
+		return fmt.Errorf("[ERROR] Failed to check and register user: %v", err)
 	}
 
 	infoText := fmt.Sprintf("您的信息:\n"+
@@ -58,20 +58,20 @@ func (b *Bot) HandleGetMeCommand(message *tgbotapi.Message) error {
 		regularUser.UserGroup,
 		regularUser.CreatedAt.Format("2006-01-02 15:04:05"))
 
-	// 获取用户头像
+	// Get user's profile photo
 	photos, err := b.api.GetUserProfilePhotos(tgbotapi.UserProfilePhotosConfig{UserID: user.ID, Limit: 1})
 	if err != nil {
 		return err
 	}
 
 	if photos.TotalCount > 0 {
-		// 用户有头像，发送带有头像的消息
+		// User has a profile photo, send message with photo
 		fileID := photos.Photos[0][0].FileID
 		photoMsg := tgbotapi.NewPhoto(message.Chat.ID, tgbotapi.FileID(fileID))
 		photoMsg.Caption = infoText
 		_, err = b.api.Send(photoMsg)
 	} else {
-		// 用户没有头像，只发送文本消息
+		// User has no profile photo, send text message only
 		err = b.SendMessage(message.Chat.ID, infoText)
 	}
 
@@ -105,7 +105,7 @@ func (b *Bot) HandleCallbackQuery(callbackQuery *tgbotapi.CallbackQuery) error {
 	case data == "create_ticket":
 		userStates[chatID] = "waiting_for_title"
 		ticketData[chatID] = &tickets.TicketCreationData{}
-		return b.SendMessage(chatID, "请输入工单标题：")
+		return b.SendMessage(chatID, "Please enter the ticket title:")
 	case data == "view_tickets":
 		return b.HandleViewTickets(&tgbotapi.Message{
 			From: callbackQuery.From,
@@ -131,7 +131,7 @@ func (b *Bot) HandleCallbackQuery(callbackQuery *tgbotapi.CallbackQuery) error {
 	case data[:11] == "add_comment":
 		return b.HandleAddComment(callbackQuery)
 	default:
-		return b.SendMessage(chatID, "未知的选项。")
+		return b.SendMessage(chatID, "Unknown option.")
 	}
 }
 
@@ -189,12 +189,12 @@ func (b *Bot) CreateTicket(chatID int64) error {
 
 	db, err := database.InitializeDB()
 	if err != nil {
-		return fmt.Errorf("获取数据库连接失败: %v", err)
+		return fmt.Errorf("[ERROR] Failed to get database connection: %v", err)
 	}
 
 	ticket, err := tickets.CreateTicket(db, chatID, data.Title, data.Description, "normal")
 	if err != nil {
-		return b.SendMessage(chatID, fmt.Sprintf("创建工单失败: %v", err))
+		return b.SendMessage(chatID, fmt.Sprintf("[ERROR] Failed to create ticket: %v", err))
 	}
 
 	delete(userStates, chatID)
@@ -219,12 +219,12 @@ func (b *Bot) HandleViewTickets(message *tgbotapi.Message) error {
 
 	db, err := database.InitializeDB()
 	if err != nil {
-		return fmt.Errorf("获取数据库连接失败: %v", err)
+		return fmt.Errorf("[ERROR] Failed to get database connection: %v", err)
 	}
 
 	userTickets, err := tickets.GetUserTickets(db, int64(telegramID))
 	if err != nil {
-		return fmt.Errorf("获取用户工单失败: %v", err)
+		return fmt.Errorf("[ERROR] Failed to get user tickets: %v", err)
 	}
 
 	if len(userTickets) == 0 {
@@ -246,21 +246,21 @@ func (b *Bot) HandleTicketView(callbackQuery *tgbotapi.CallbackQuery) error {
 	chatID := callbackQuery.Message.Chat.ID
 	data := callbackQuery.Data
 
-	// 从回调数据中提取工单ID
+	// Extract ticket ID from callback data
 	var ticketID int
 	_, err := fmt.Sscanf(data, "view_ticket_%d", &ticketID)
 	if err != nil {
-		return fmt.Errorf("解析工单ID失败: %v", err)
+		return fmt.Errorf("[ERROR] Failed to parse ticket ID: %v", err)
 	}
 
 	db, err := database.InitializeDB()
 	if err != nil {
-		return fmt.Errorf("获取数据库连接失败: %v", err)
+		return fmt.Errorf("[ERROR] Failed to get database connection: %v", err)
 	}
 
 	ticket, err := tickets.GetTicketByID(db, ticketID)
 	if err != nil {
-		return fmt.Errorf("获取工单信息失败: %v", err)
+		return fmt.Errorf("[ERROR] Failed to get ticket information: %v", err)
 	}
 
 	ticketInfo := fmt.Sprintf("工单 #%d\n标题: %s\n描述: %s\n状态: %s\n优先级: %s\n创建时间: %s",
@@ -285,13 +285,13 @@ func (b *Bot) HandleTicketView(callbackQuery *tgbotapi.CallbackQuery) error {
 		)
 	}
 
-	// 获取工单评论
+	// Get ticket comments
 	comments, err := tickets.GetTicketComments(db, ticketID)
 	if err != nil {
-		return fmt.Errorf("获取工单评论失败: %v", err)
+		return fmt.Errorf("[ERROR] Failed to get ticket comments: %v", err)
 	}
 
-	// 添加评论到工单信息
+	// Add comments to ticket information
 	for _, comment := range comments {
 		ticketInfo += fmt.Sprintf("\n\n评论 (ID: %d):\n%s\n时间: %s", comment.CommentID, comment.Content, comment.CreatedAt.Format("2006-01-02 15:04:05"))
 	}
@@ -306,39 +306,39 @@ func (b *Bot) HandleCloseTicket(callbackQuery *tgbotapi.CallbackQuery) error {
 	var ticketID int
 	_, err := fmt.Sscanf(data, "close_ticket_%d", &ticketID)
 	if err != nil {
-		return fmt.Errorf("解析工单ID失败: %v", err)
+		return fmt.Errorf("[ERROR] Failed to parse ticket ID: %v", err)
 	}
 
 	db, err := database.InitializeDB()
 	if err != nil {
-		return fmt.Errorf("获取数据库连接失败: %v", err)
+		return fmt.Errorf("[ERROR] Failed to get database connection: %v", err)
 	}
 
 	err = tickets.CloseTicket(db, ticketID)
 	if err != nil {
-		return fmt.Errorf("关闭工单失败: %v", err)
+		return fmt.Errorf("[ERROR] Failed to close ticket: %v", err)
 	}
 
-	// 更新内联键盘，移除"关闭工单"按钮
+	// Update inline keyboard, remove "Close ticket" button
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("返回列表", "view_tickets"),
 		),
 	)
 
-	// 更新消息文本，显示工单已关闭
+	// Update message text, show ticket is closed
 	updatedText := fmt.Sprintf("%s\n\n工单已关闭", callbackQuery.Message.Text)
 
 	editMsg := tgbotapi.NewEditMessageTextAndMarkup(chatID, callbackQuery.Message.MessageID, updatedText, keyboard)
 	_, err = b.api.Send(editMsg)
 	if err != nil {
-		return fmt.Errorf("更新消息失败: %v", err)
+		return fmt.Errorf("[ERROR] Failed to update message: %v", err)
 	}
 
 	return nil
 }
 
-// 添加新的函数处理添加评论
+// Add new function to handle adding comments
 func (b *Bot) HandleAddComment(callbackQuery *tgbotapi.CallbackQuery) error {
 	chatID := callbackQuery.Message.Chat.ID
 	data := callbackQuery.Data
@@ -346,7 +346,7 @@ func (b *Bot) HandleAddComment(callbackQuery *tgbotapi.CallbackQuery) error {
 	var ticketID int
 	_, err := fmt.Sscanf(data, "add_comment_%d", &ticketID)
 	if err != nil {
-		return fmt.Errorf("解析工单ID失败: %v", err)
+		return fmt.Errorf("[ERROR] Failed to parse ticket ID: %v", err)
 	}
 
 	userStates[chatID] = StateWaitingForComment
@@ -355,30 +355,30 @@ func (b *Bot) HandleAddComment(callbackQuery *tgbotapi.CallbackQuery) error {
 	return b.SendMessage(chatID, "请输入您的评论：")
 }
 
-// 添加新的函数处理添加评论
+// Add new function to handle adding comments
 func (b *Bot) AddCommentToTicket(chatID int64, telegramUserID int64, content string) error {
 	data := ticketData[chatID]
 
 	db, err := database.InitializeDB()
 	if err != nil {
-		return fmt.Errorf("获取数据库连接失败: %v", err)
+		return fmt.Errorf("[ERROR] Failed to get database connection: %v", err)
 	}
 
-	// 获取数据库中的 user_id
+	// Get user_id from database
 	userID, err := database.GetUserIDByTelegramID(db, telegramUserID)
 	if err != nil {
-		return fmt.Errorf("获取用户ID失败: %v", err)
+		return fmt.Errorf("[ERROR] Failed to get user ID: %v", err)
 	}
 
 	err = tickets.AddComment(db, data.TicketID, userID, content)
 	if err != nil {
-		return fmt.Errorf("添加评论失败: %v", err)
+		return fmt.Errorf("[ERROR] Failed to add comment: %v", err)
 	}
 
 	delete(userStates, chatID)
 	delete(ticketData, chatID)
 
-	// 重新显示工单信息
+	// Display ticket information again
 	return b.HandleTicketView(&tgbotapi.CallbackQuery{
 		Message: &tgbotapi.Message{Chat: &tgbotapi.Chat{ID: chatID}},
 		Data:    fmt.Sprintf("view_ticket_%d", data.TicketID),

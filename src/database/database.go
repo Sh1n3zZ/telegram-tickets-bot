@@ -33,7 +33,7 @@ func ConnectDatabase(cfg *config.Config) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	// 设置连接池参数
+	// Set connection pool parameters
 	sqlDB.SetMaxOpenConns(0)
 	sqlDB.SetMaxIdleConns(0)
 
@@ -54,7 +54,7 @@ func InitializeAndPrintDBInfo(cfg *config.Config) error {
 		}
 
 		stats := sqlDB.Stats()
-		log.Printf("数据库连接成功。连接信息：最大连接数: %d, 空闲连接数: %d, 使用中连接数: %d",
+		log.Printf("[INFO] Database connection successful. Connection info: Max open connections: %d, Idle connections: %d, In-use connections: %d",
 			stats.MaxOpenConnections, stats.Idle, stats.InUse)
 	})
 
@@ -63,7 +63,7 @@ func InitializeAndPrintDBInfo(cfg *config.Config) error {
 
 func InitializeDB() (*gorm.DB, error) {
 	if db == nil {
-		return nil, fmt.Errorf("数据库未初始化")
+		return nil, fmt.Errorf("[ERROR] Database not initialized")
 	}
 	return db, nil
 }

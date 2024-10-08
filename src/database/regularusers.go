@@ -22,7 +22,7 @@ func CreateRegularUser(db *gorm.DB, telegramID int64) error {
 	var maxUserID int
 	err := db.Model(&RegularUser{}).Select("COALESCE(MAX(user_id), 0)").Scan(&maxUserID).Error
 	if err != nil {
-		return fmt.Errorf("获取最大 user_id 失败: %v", err)
+		return fmt.Errorf("[ERROR] Failed to get max user_id: %v", err)
 	}
 
 	// 创建新用户
@@ -53,15 +53,15 @@ func CheckAndRegisterUser(db *gorm.DB, telegramID int64) (*RegularUser, error) {
 			// 用户未注册，自动注册
 			err = CreateRegularUser(db, telegramID)
 			if err != nil {
-				return nil, fmt.Errorf("创建用户失败: %v", err)
+				return nil, fmt.Errorf("[ERROR] Failed to create user: %v", err)
 			}
 			// 重新获取用户信息
 			user, err = GetRegularUserByTelegramID(db, telegramID)
 			if err != nil {
-				return nil, fmt.Errorf("获取新创建的用户信息失败: %v", err)
+				return nil, fmt.Errorf("[ERROR] Failed to get newly created user info: %v", err)
 			}
 		} else {
-			return nil, fmt.Errorf("查询用户信息失败: %v", err)
+			return nil, fmt.Errorf("[ERROR] Failed to query user info: %v", err)
 		}
 	}
 

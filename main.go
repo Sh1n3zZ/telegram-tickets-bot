@@ -10,31 +10,31 @@ import (
 )
 
 func main() {
-	// 初始化配置
+	// Initialize configuration
 	cfg, err := config.InitializationConfig()
 	if err != nil {
-		log.Fatalf("初始化配置失败: %v", err)
+		log.Fatalf("[ERROR] Failed to initialize configuration: %v", err)
 	}
 
-	// 初始化数据库并打印连接信息
+	// Initialize database and print connection information
 	err = database.InitializeAndPrintDBInfo(&cfg)
 	if err != nil {
-		log.Fatalf("初始化数据库失败: %v", err)
+		log.Fatalf("[ERROR] Failed to initialize database: %v", err)
 	}
 
-	// 创建 Bot 实例
+	// Create Bot instance
 	bot, err := telegram.NewBot(&cfg)
 	if err != nil {
-		log.Fatalf("创建 Bot 失败: %v", err)
+		log.Fatalf("[ERROR] Failed to create Bot: %v", err)
 	}
 
-	// 设置更新配置
+	// Set update configuration
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	// 获取更新通道
+	// Get update channel
 	updates := bot.GetUpdatesChan(u)
 
-	// 处理更新
+	// Handle updates
 	bot.HandleUpdates(updates)
 }

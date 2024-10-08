@@ -24,16 +24,16 @@ func InitializationConfig() (Config, error) {
 	var config Config
 	configPath, err := filepath.Abs("config.toml")
 	if err != nil {
-		return config, fmt.Errorf("获取配置文件路径失败: %w", err)
+		return config, fmt.Errorf("[ERROR] Failed to get config file path: %w", err)
 	}
 
 	_, err = toml.DecodeFile(configPath, &config)
 	if err != nil {
-		return config, fmt.Errorf("解析配置文件失败: %w", err)
+		return config, fmt.Errorf("[ERROR] Failed to parse config file: %w", err)
 	}
 
 	if config.Telegram.BotToken == "" {
-		return config, fmt.Errorf("Telegram Bot Token 未在配置文件中设置")
+		return config, fmt.Errorf("[ERROR] Telegram Bot Token not set in config file")
 	}
 
 	return config, nil

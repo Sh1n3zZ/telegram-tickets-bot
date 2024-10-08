@@ -31,20 +31,20 @@ func (Ticket) TableName() string {
 }
 
 func CreateTicket(db *gorm.DB, telegramID int64, title string, description string, priority string) (*Ticket, error) {
-	// 检查用户是否已注册，如果未注册则自动注册
+	// Check if the user is registered, if not, automatically register them
 	user, err := database.CheckAndRegisterUser(db, telegramID)
 	if err != nil {
-		return nil, fmt.Errorf("检查和注册用户失败: %v", err)
+		return nil, fmt.Errorf("[ERROR] Failed to check and register user: %v", err)
 	}
 
-	// 获取最大的 ticket_id
+	// Get the maximum ticket_id
 	var maxTicketID int
 	err = db.Model(&Ticket{}).Select("COALESCE(MAX(ticket_id), 0)").Scan(&maxTicketID).Error
 	if err != nil {
-		return nil, fmt.Errorf("获取最大 ticket_id 失败: %v", err)
+		return nil, fmt.Errorf("[ERROR] Failed to get maximum ticket_id: %v", err)
 	}
 
-	// 创建新工单
+	// Create a new ticket
 	ticket := Ticket{
 		TicketID:    maxTicketID + 1,
 		Title:       title,
@@ -58,7 +58,7 @@ func CreateTicket(db *gorm.DB, telegramID int64, title string, description strin
 
 	result := db.Create(&ticket)
 	if result.Error != nil {
-		return nil, fmt.Errorf("创建工单失败: %v", result.Error)
+		return nil, fmt.Errorf("[ERROR] Failed to create ticket: %v", result.Error)
 	}
 
 	return &ticket, nil

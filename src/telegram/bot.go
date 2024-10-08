@@ -1,7 +1,6 @@
 package telegram
 
 import (
-	"fmt"
 	"log"
 	"strings"
 
@@ -14,26 +13,26 @@ type Bot struct {
 	api *tgbotapi.BotAPI
 }
 
-// 初始化Telegram Bot
+// Initialize Telegram Bot
 func NewBot(cfg *config.Config) (*Bot, error) {
 	bot, err := tgbotapi.NewBotAPI(cfg.Telegram.BotToken)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Printf("已授权账号 %s", bot.Self.UserName)
+	log.Printf("[INFO] Authorized on account %s", bot.Self.UserName)
 
 	return &Bot{api: bot}, nil
 }
 
-// 发送文本消息
+// Send text message
 func (b *Bot) SendMessage(chatID int64, text string) error {
 	msg := tgbotapi.NewMessage(chatID, text)
 	_, err := b.api.Send(msg)
 	return err
 }
 
-// 发送图片消息
+// Send photo message
 func (b *Bot) SendPhoto(chatID int64, photoPath string, caption string) error {
 	photo := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(photoPath))
 	photo.Caption = caption
@@ -41,7 +40,7 @@ func (b *Bot) SendPhoto(chatID int64, photoPath string, caption string) error {
 	return err
 }
 
-// 发送带有内联键盘的消息
+// Send message with inline keyboard
 func (b *Bot) SendMessageWithInlineKeyboard(chatID int64, text string, keyboard tgbotapi.InlineKeyboardMarkup) error {
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ReplyMarkup = keyboard
@@ -71,12 +70,12 @@ func (b *Bot) HandleUpdates(updates tgbotapi.UpdatesChannel) {
 
 			callback := tgbotapi.NewCallback(update.CallbackQuery.ID, "")
 			if _, err := b.api.Request(callback); err != nil {
-				fmt.Printf("回答回调查询时出错: %v\n", err)
+				log.Printf("[ERROR] Error answering callback query: %v", err)
 			}
 		}
 
 		if err != nil {
-			fmt.Printf("处理更新时出错: %v\n", err)
+			log.Printf("[ERROR] Error handling update: %v", err)
 		}
 	}
 }
