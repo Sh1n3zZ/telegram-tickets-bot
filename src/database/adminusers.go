@@ -21,7 +21,7 @@ func (AdminUser) TableName() string {
 func GetAdminByID(db *gorm.DB, adminID int) (*AdminUser, error) {
 	var admin AdminUser
 	if err := db.Where("admin_id = ?", adminID).First(&admin).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("[ERROR] Failed to fetch admin information: %v", err)
 	}
 	return &admin, nil
 }

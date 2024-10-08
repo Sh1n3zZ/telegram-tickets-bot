@@ -450,17 +450,36 @@ func (b *Bot) HandleTicketView(callbackQuery *tgbotapi.CallbackQuery) error {
 
 	log.Printf("[DEBUG] Constructed keyboard: %+v", keyboard)
 
-	// Get ticket comments
+	// Fetch ticket comments
 	comments, err := tickets.GetTicketComments(db, ticketID)
 	if err != nil {
-		return fmt.Errorf("[ERROR] Failed to get ticket comments: %v", err)
+		return fmt.Errorf("[ERROR] Failed to fetch ticket comments: %v", err)
 	}
 
 	log.Printf("[DEBUG] Retrieved %d comments", len(comments))
 
 	// Add comments to ticket information
 	for _, comment := range comments {
-		ticketInfo += fmt.Sprintf("\n\n评论 (ID: %d):\n%s\n时间: %s", comment.CommentID, comment.Content, comment.CreatedAt.Format("2006-01-02 15:04:05"))
+		if comment.AdminID != nil {
+			// Fetch admin information
+			admin, err := database.GetAdminByID(db, *comment.AdminID)
+			if err != nil {
+				log.Printf("[ERROR] Failed to fetch admin information: %v", err)
+				continue
+			}
+			ticketInfo += fmt.Sprintf("\n\n[Staff] %s (Global Comment ID: %d):\n%s\n\nRegards,\n%s\n%s\nTime: %s",
+				admin.FullName,
+				comment.CommentID,
+				comment.Content,
+				admin.FullName,
+				admin.Position,
+				comment.CreatedAt.Format("2006-01-02 15:04:05"))
+		} else {
+			ticketInfo += fmt.Sprintf("\n\nUser Comment (ID: %d):\n%s\nTime: %s",
+				comment.CommentID,
+				comment.Content,
+				comment.CreatedAt.Format("2006-01-02 15:04:05"))
+		}
 	}
 
 	log.Printf("[DEBUG] Sending message with inline keyboard")
