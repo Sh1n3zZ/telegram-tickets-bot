@@ -236,6 +236,13 @@ func (b *Bot) AddAdminCommentToTicket(chatID int64, telegramUserID int64, conten
 	// Notify the user
 	userMessage := fmt.Sprintf("工单 #%d 有来自 Staff 的新回复：\n%s", ticketID, content)
 
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("查看工单历史", fmt.Sprintf("view_ticket_%d", ticketID)),
+			tgbotapi.NewInlineKeyboardButtonData("回复", fmt.Sprintf("reply_ticket_%d", ticketID)),
+		),
+	)
+
 	// Directly get the user's Telegram ID
 	userTelegramID, err := database.GetTelegramIDByUserID(db, ticket.CreatedBy)
 	if err != nil {
@@ -246,7 +253,7 @@ func (b *Bot) AddAdminCommentToTicket(chatID int64, telegramUserID int64, conten
 	log.Printf("[DEBUG] User %d Telegram ID: %d", ticket.CreatedBy, userTelegramID)
 
 	// Send message using the obtained Telegram ID
-	err = b.SendMessage(userTelegramID, userMessage)
+	err = b.SendMessageWithInlineKeyboard(userTelegramID, userMessage, keyboard)
 	if err != nil {
 		log.Printf("[ERROR] Failed to notify user using Telegram ID %d for ticket #%d: %v", userTelegramID, ticketID, err)
 		return fmt.Errorf("failed to notify user: %v", err)
@@ -697,7 +704,15 @@ func (b *Bot) NotifyAssignedAdmin(ticket *tickets.Ticket, comment *tickets.Ticke
 	}
 
 	message := fmt.Sprintf("工单 #%d 有新回复:\n%s", ticket.TicketID, comment.Content)
-	return b.SendMessage(admin.TelegramID, message)
+
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("查看工单历史", fmt.Sprintf("view_ticket_%d", ticket.TicketID)),
+			tgbotapi.NewInlineKeyboardButtonData("回复", fmt.Sprintf("reply_ticket_%d", ticket.TicketID)),
+		),
+	)
+
+	return b.SendMessageWithInlineKeyboard(admin.TelegramID, message, keyboard)
 }
 
 func (b *Bot) HandleAdminViewTickets(message *tgbotapi.Message) error {
