@@ -76,3 +76,12 @@ func GetUserIDByTelegramID(db *gorm.DB, telegramID int64) (int, error) {
 	}
 	return user.UserID, nil
 }
+
+func GetRegularUserByID(db *gorm.DB, userID int) (*RegularUser, error) {
+	var user RegularUser
+	result := db.Where("user_id = ?", userID).First(&user)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &user, nil
+}

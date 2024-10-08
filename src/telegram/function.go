@@ -474,8 +474,21 @@ func (b *Bot) HandleTicketView(callbackQuery *tgbotapi.CallbackQuery) error {
 				admin.FullName,
 				admin.Position,
 				comment.CreatedAt.Format("2006-01-02 15:04:05"))
-		} else {
-			ticketInfo += fmt.Sprintf("\n\nUser Comment (ID: %d):\n%s\nTime: %s",
+		} else if comment.UserID != nil {
+			// Fetch user information
+			user, err := database.GetRegularUserByID(db, *comment.UserID)
+			if err != nil {
+				log.Printf("[ERROR] Failed to fetch user information: %v", err)
+				continue
+			}
+			// Get user's full name from Telegram
+			userFullName, err := b.GetUserFullName(user.TelegramID)
+			if err != nil {
+				log.Printf("[ERROR] Failed to get user's full name: %v", err)
+				userFullName = "Unknown User"
+			}
+			ticketInfo += fmt.Sprintf("\n\n%s (Global Comment ID: %d):\n%s\nTime: %s",
+				userFullName,
 				comment.CommentID,
 				comment.Content,
 				comment.CreatedAt.Format("2006-01-02 15:04:05"))
@@ -593,10 +606,18 @@ func (b *Bot) AddCommentToTicket(chatID int64, telegramUserID int64, content str
 	delete(ticketData, chatID)
 
 	// Display ticket information
-	return b.HandleTicketView(&tgbotapi.CallbackQuery{
+	log.Printf("[DEBUG] Calling HandleTicketView from AddCommentToTicket with chatID: %d, ticketID: %d, telegramUserID: %d", chatID, data.TicketID, telegramUserID)
+	err = b.HandleTicketView(&tgbotapi.CallbackQuery{
 		Message: &tgbotapi.Message{Chat: &tgbotapi.Chat{ID: chatID}},
 		Data:    fmt.Sprintf("view_ticket_%d", data.TicketID),
+		From:    &tgbotapi.User{ID: telegramUserID},
 	})
+	if err != nil {
+		log.Printf("[ERROR] HandleTicketView failed: %v", err)
+		return err
+	}
+	log.Printf("[DEBUG] HandleTicketView completed successfully")
+	return nil
 }
 
 func (b *Bot) HandleAssignTicket(callbackQuery *tgbotapi.CallbackQuery) error {
@@ -714,4 +735,22 @@ func (b *Bot) HandleAdminViewTickets(message *tgbotapi.Message) error {
 	}
 
 	return b.SendMessageWithInlineKeyboard(chatID, "所有工单列表：", keyboard)
+}
+
+func (b *Bot) GetUserFullName(telegramID int64) (string, error) {
+	chatMember, err := b.api.GetChatMember(tgbotapi.GetChatMemberConfig{
+		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{
+			ChatID: telegramID,
+			UserID: telegramID,
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+
+	fullName := chatMember.User.FirstName
+	if chatMember.User.LastName != "" {
+		fullName += " " + chatMember.User.LastName
+	}
+	return fullName, nil
 }
