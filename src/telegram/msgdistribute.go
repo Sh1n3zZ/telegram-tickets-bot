@@ -8,6 +8,8 @@ func (b *Bot) HandleCommand(message *tgbotapi.Message) error {
 		return b.HandleGetMeCommand(message)
 	case "help", "start":
 		return b.HandleHelpCommand(message)
+	case "tickets":
+		return b.HandleAdminViewTickets(message)
 	default:
 		return b.SendMessage(message.Chat.ID, "未知命令,请尝试 /help 获取帮助。")
 	}

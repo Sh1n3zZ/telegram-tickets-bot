@@ -20,3 +20,11 @@ func GetTicketByID(db *gorm.DB, ticketID int) (*Ticket, error) {
 	}
 	return &ticket, nil
 }
+
+func GetAllTickets(db *gorm.DB) ([]Ticket, error) {
+	var tickets []Ticket
+	if err := db.Order("created_at desc").Find(&tickets).Error; err != nil {
+		return nil, err
+	}
+	return tickets, nil
+}

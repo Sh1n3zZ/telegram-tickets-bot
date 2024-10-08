@@ -1,10 +1,13 @@
 package telegram
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
 	"telegram-tickets-bot/src/config"
+	"telegram-tickets-bot/src/database"
+	"telegram-tickets-bot/src/tickets"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -50,6 +53,35 @@ func (b *Bot) SendMessageWithInlineKeyboard(chatID int64, text string, keyboard 
 
 func (b *Bot) GetUpdatesChan(config tgbotapi.UpdateConfig) tgbotapi.UpdatesChannel {
 	return b.api.GetUpdatesChan(config)
+}
+
+func (b *Bot) NotifyAllAdmins(ticket *tickets.Ticket) error {
+	db, err := database.InitializeDB()
+	if err != nil {
+		return fmt.Errorf("[ERROR] Failed to get database connection: %v", err)
+	}
+
+	var admins []database.AdminUser
+	if err := db.Find(&admins).Error; err != nil {
+		return fmt.Errorf("[ERROR] Failed to fetch admin users: %v", err)
+	}
+
+	for _, admin := range admins {
+		message := fmt.Sprintf("新工单已创建:\n工单ID: %d\n标题: %s\n描述: %s",
+			ticket.TicketID, ticket.Title, ticket.Description)
+
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("分配工单", fmt.Sprintf("assign_ticket_%d", ticket.TicketID)),
+			),
+		)
+
+		if err := b.SendMessageWithInlineKeyboard(admin.TelegramID, message, keyboard); err != nil {
+			log.Printf("[ERROR] Failed to notify admin %d: %v", admin.AdminID, err)
+		}
+	}
+
+	return nil
 }
 
 func (b *Bot) HandleUpdates(updates tgbotapi.UpdatesChannel) {
